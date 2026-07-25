@@ -2,32 +2,45 @@
 
 > 本文档帮助您判断当前 Python 是否为微软商店版，并提供与商店版共存的官方版安装方案。
 >
-> **wxauto4 免费版要求 Python 3.9-3.12**（不支持 3.13/3.14）。如果您的 Python 是 3.13+，必须降级到 3.11 才能使用 wxauto4。Plus 版（wxautox4，付费）支持到 3.13。
+> **两个后端都要求 Python 3.9-3.12**（3.13/3.14 不支持）。如果您的 Python 是 3.13+，必须降级到 3.11 才能使用本脚本。
+>
+> **两个后端的微信版本支持差异**：
+> - **pywechat127**（推荐）：支持微信 4.1.6+，**含 4.1.9+ 新版**，无需降级微信。
+> - **wxauto4**（备选）：仅支持微信 4.1.0 ~ 4.1.8.107，新版微信需降级。
 
 ---
 
-## 零、为什么 wxauto 装不上？
+## 零、为什么 pip install 报错？
 
-如果执行 `pip install wxauto` 报：
+### 报错 A：`pip install wxauto` 报 "No matching distribution"
 
-```
-ERROR: Could not find a version that satisfies the requirement wxauto (from versions: none)
-ERROR: No matching distribution found for wxauto
-```
-
-**根因**：包名错了！官方 PyPI 上的包名是 **`wxauto4`**（带 4），不是 `wxauto`。请改用：
+**根因**：包名错了。官方 PyPI 上没有 `wxauto` 这个包。新版有两个独立的后端可选：
 
 ```bat
+:: 推荐：pywechat127（支持新版微信 4.1.6+）
+pip install pywechat127
+
+:: 备选：wxauto4（仅支持微信 4.1.0 - 4.1.8.107）
 pip install wxauto4
 ```
 
-或带清华源：
+### 报错 B：`pip install wxauto4` 也报 "No matching distribution"
+
+可能原因：
+1. **Python 版本不在 3.9-3.12 范围内**（wxauto4 的硬性限制）。请用 `py -3.11 -m pip install ...` 强制走 3.11 解释器。
+2. **PyPI 默认源连不上**（中国大陆常见）。请加上 `-i https://pypi.tuna.tsinghua.edu.cn/simple` 参数走清华镜像源。
+
+两个问题独立，建议同时解决。详见下方第五节配置 pip 镜像源。
+
+### 推荐：直接装 pywechat127（不再纠结版本兼容）
+
+如果您的微信是 4.1.6+（最新版也可），**强烈推荐装 pywechat127**，免去降级微信的烦恼：
 
 ```bat
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto4
+py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pywechat127
 ```
 
-如果 `pip install wxauto4` 也报 "No matching distribution"，请按下列步骤检查 Python 版本（必须 3.9-3.12）和网络（PyPI 镜像源）。
+pywechat127 是 [Hello-Mr-Crab/pywechat](https://github.com/Hello-Mr-Crab/pywechat) 项目的 PyPI 包名，GitHub 1.7k stars，基于 pywinauto 纯 UI 自动化，无 Hook 注入，封号风险低。
 
 ---
 

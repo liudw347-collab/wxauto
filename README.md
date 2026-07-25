@@ -1,6 +1,12 @@
 # 定州市第八中学 · 假期安全提醒每日自动发送
 
-> 用 Python + wxauto 控制 PC 版微信，每天 7:30 自动将安全提醒发到班级家长群，并截图转发到班主任工作群。
+> 用 Python 控制 PC 版微信，每天 7:30 自动将安全提醒发到班级家长群，并截图转发到班主任工作群。
+>
+> **支持两种后端**，脚本自动检测：
+> - **pywechat127**（推荐）—— 支持微信 4.1.6+，**含最新 4.1.9+ 新版**！纯 UI 自动化、零 Hook、封号风险低。
+> - **wxauto4**（备选）—— 仅支持微信 4.1.0 ~ 4.1.8.107。
+>
+> 如果您的微信是新版（4.1.9+），装 pywechat127 即可；如果习惯用 4.1.8.107 历史版本，可装 wxauto4。
 
 ---
 
@@ -9,16 +15,21 @@
 | 项 | 要求 |
 |---|---|
 | 操作系统 | Windows 10 / 11（64 位） |
-| Python | **官方版 3.11**（wxauto4 免费版要求 3.9-3.12；**3.13/3.14 不支持**；微软商店版不可用，详见 [setup_python.md](setup_python.md)） |
-| wxauto 库 | **wxauto4**（注意包名带 4，不是 `wxauto`） |
-| 微信版本 | 微信 PC 版 4.1.x（推荐 4.1.8.107；4.1.9+ 需 Plus 版）|
+| Python | **官方版 3.11**（两个后端都要求 3.9-3.12；3.13/3.14 不支持；微软商店版不可用，详见 [setup_python.md](setup_python.md)） |
+| 后端库 | **pywechat127**（推荐，支持新版微信）或 **wxauto4**（备选，仅支持 4.1.8.107 及以下） |
+| 微信版本 | 微信 PC 版 **4.1.6+**（pywechat127 后端）；或 **4.1.0 ~ 4.1.8.107**（wxauto4 后端） |
 | 网络 | 微信能正常登录收发消息 |
 
-> **重要变更**：
-> - **包名变了**：官方 PyPI 上的包名是 `wxauto4`（不是 `wxauto`）。直接 `pip install wxauto` 会报 "No matching distribution found"。
-> - **微信版本要求变了**：需要微信 PC 版 4.1.x（**3.x 版本不支持**）。可从官方文档提供的 [GitHub Releases 归档](https://github.com/SiverKing/wechat4.0-windows-versions/releases) 下载历史版本。
-> - **Python 3.13/3.14 不支持**，必须用 3.9-3.12。推荐 3.11。
-
+> **两个后端怎么选？**
+>
+> | 场景 | 推荐后端 | 原因 |
+> |---|---|---|
+> | 微信是 **4.1.9+ 新版** | ✅ pywechat127 | wxauto4 不支持新版 |
+> | 微信是 **4.1.0 ~ 4.1.8.107** | ✅ 任选 | 都可用，pywechat127 更活跃 |
+> | 微信是 **3.x 旧版** | ❌ 都不支持 | 需升级到 4.x |
+>
+> **不知道自己微信版本？** 打开微信 → 左下角 ☰ → 设置 → 关于，会看到完整版本号（如 4.1.9.35）。
+>
 > **如果您电脑上是微软商店版 Python 或 3.13/3.14**：请先按 [setup_python.md](setup_python.md) 安装官方版 Python 3.11。
 
 ---
@@ -27,9 +38,10 @@
 
 ```
 wechat-safety-reminder/
-├── send_safety_reminder.py   ← 核心脚本（含文案、发送、截图、转发、重试、日志）
-├── install_deps.bat         ← 依赖安装脚本（双击运行一次即可，自动诊断 Python 来源）
+├── send_safety_reminder.py   ← 核心脚本（含文案、发送、截图、转发、重试、日志、双后端自动检测）
+├── install_deps.bat         ← 依赖安装脚本（默认装 pywechat127，失败可选 wxauto4）
 ├── run_daily.bat             ← 启动器（双击测试 / 任务计划程序调用，顶部可配置 Python 路径）
+├── check_wechat.bat          ← 微信环境诊断脚本（检测微信进程、窗口、版本）
 ├── setup_python.md           ← Python 环境诊断与官方版安装指南（必读）
 └── README.md                 ← 本说明文件
 ```
@@ -50,28 +62,37 @@ wechat-safety-reminder/
 - 如果是微软商店版 Python 或 Python 3.14 → 必须额外装官方版 Python 3.11
 - 如果已经是官方版 Python 3.11 → 可直接继续
 
-### 第 3 步：安装依赖
+### 第 3 步：安装依赖（推荐 pywechat127，支持新版微信）
 
-双击运行 **`install_deps.bat`**，脚本会自动诊断 Python 来源并安装 `wxauto4`（注意是 wxauto4，不是 wxauto）。
+双击运行 **`install_deps.bat`**，脚本会自动诊断 Python 并安装 **pywechat127**（支持微信 4.1.6+，含 4.1.9+ 新版）。
 
-如果检测出商店版或 3.13/3.14，按提示装好官方版 3.11 后，手动执行以下命令安装依赖（注意带 `py -3.11 -m`）：
+如果需要手动安装（例如默认 Python 不符合要求，或想改用 wxauto4 备选后端）：
 
 ```bat
+:: 推荐：pywechat127（支持微信 4.1.6+，含新版）
+py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pywechat127
+
+:: 备选：wxauto4（仅支持微信 4.1.0 ~ 4.1.8.107）
 py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto4
 ```
 
-> 💡 `-i https://pypi.tuna.tsinghua.edu.cn/simple` 是清华镜像源，国内访问速度更快、避免连接 PyPI 失败。如需永久配置，详见 [setup_python.md 第五节](setup_python.md)。
+> 💡 两个后端装一个即可。脚本会自动检测并选用，默认优先 pywechat127。
 >
-> ⚠ **包名是 `wxauto4`，不是 `wxauto`**。wxauto4 会自动安装 pywin32、pillow、psutil 等依赖，无需单独安装。
+> 💡 `-i https://pypi.tuna.tsinghua.edu.cn/simple` 是清华镜像源，国内访问速度更快。如需永久配置，详见 [setup_python.md 第五节](setup_python.md)。
 
 ### 第 4 步：登录微信
 
-1. 打开 PC 版微信（**需 4.1.x 版本，3.x 不支持**）并扫码登录。
+1. 打开 PC 版微信（**需 4.1.6+**；如使用 wxauto4 后端则需 4.1.0 ~ 4.1.8.107）并扫码登录。
 2. **保持微信窗口可见**（不能最小化到任务栏；可以缩到角落）。
 3. 确保在最近聊天列表里能看到目标群（**先用手机微信进入一次群聊**，PC 端就会自动出现）。
 
-> 如需安装 4.1.8.107 历史版本：https://github.com/SiverKing/wechat4.0-windows-versions/releases/tag/v4.1.8.107
-> （先卸载当前微信，再装这个版本；安装后建议关闭自动更新避免被升级到 4.1.9+）
+> 💡 **不知道微信版本？** 双击运行 `check_wechat.bat`，会自动检测并显示版本。
+>
+> 💡 **如果使用 wxauto4 后端**且当前微信版本过高（4.1.9+），需要降级：
+> - 4.1.8.107 历史版本下载：https://github.com/SiverKing/wechat4.0-windows-versions/releases/tag/v4.1.8.107
+> - 安装后在「设置 → 通用设置」**取消勾选"有更新时自动升级微信"**
+>
+> 💡 **如果使用 pywechat127 后端**（推荐），无需降级微信，直接用最新版即可。
 
 ### 第 5 步：先跑一次测试模式
 
