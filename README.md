@@ -51,8 +51,10 @@ wechat-safety-reminder/
 如果检测出商店版，按提示装好官方版后，手动执行以下命令安装依赖（注意带 `py -3.11 -m`）：
 
 ```bat
-py -3.11 -m pip install --upgrade wxauto pywin32
+py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto pywin32
 ```
+
+> 💡 `-i https://pypi.tuna.tsinghua.edu.cn/simple` 是清华镜像源，国内访问速度更快、避免连接 PyPI 失败。如需永久配置，详见 [setup_python.md 第五节](setup_python.md)。
 
 ### 第 4 步：登录微信
 

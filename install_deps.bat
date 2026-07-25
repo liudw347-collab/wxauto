@@ -38,7 +38,7 @@ for /f "tokens=*" %%V in ('python -c "import sys;print(sys.version)"') do (
 )
 echo  [信息] Python 版本：!PYTHON_VERSION!
 
-REM --- 3. 检测是否微软商店版 ---
+REM --- 3. 检测是否微软商店版（路径含 WindowsApps） ---
 set IS_STORE=0
 echo !PYTHON_FIRST! | findstr /I "WindowsApps" >nul && set IS_STORE=1
 python -c "import sys;print('STORE' if 'WindowsApps' in sys.executable else 'OFFICIAL')" >"%TEMP%\py_kind.txt" 2>nul
@@ -73,6 +73,29 @@ if !IS_STORE!==1 (
     echo  [警告] 路径含 WindowsApps，疑似商店版，已在上文处理。
 )
 
+REM --- 3.1 检查当前默认 Python 版本是否为 3.14（太新，wxauto 兼容性差）---
+python -c "import sys;print('TOO_NEW' if sys.version_info[:2] >= (3,14) else 'OK')" >"%TEMP%\py_ver.txt" 2>nul
+set /p PY_VER_CHECK=<%TEMP%\py_ver.txt
+del "%TEMP%\py_ver.txt" 2>nul
+
+if "!PY_VER_CHECK!"=="TOO_NEW" (
+    echo.
+    echo  [提示] 当前默认 Python 是 3.14+，wxauto 与 pywin32 对 3.14 的适配尚不稳定。
+    echo  建议改用 Python 3.11 安装依赖与运行脚本。
+    echo.
+    echo  如果您已经安装了官方版 3.11，请用以下命令安装依赖：
+    echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto pywin32
+    echo.
+    echo  并编辑 run_daily.bat 顶部：set "PYTHON_EXE=py -3.11"
+    echo.
+    choice /C YN /M "是否继续用当前 Python 安装依赖（Y=继续 / N=退出）"
+    if errorlevel 2 (
+        pause
+        exit /b 1
+    )
+    echo  [信息] 已选择继续，使用当前默认 Python 安装依赖。
+)
+
 REM --- 4. 版本号检查（3.8 ~ 3.13 允许；3.12+ 给提示但不阻塞） ---
 python -c "import sys;exit(0 if sys.version_info[:2] >= (3,8) else 1)"
 if errorlevel 1 (
@@ -89,8 +112,12 @@ echo  正在安装 / 升级 wxauto ...
 echo.
 pip install --upgrade wxauto
 if errorlevel 1 (
-    echo  [错误] wxauto 安装失败，请检查网络或尝试使用国内镜像：
-    echo      pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto
+    echo  [警告] 默认 PyPI 源安装失败，正在切换到清华镜像源 ...
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto
+)
+if errorlevel 1 (
+    echo  [错误] wxauto 安装失败，请手动执行：
+    echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto
     pause
     exit /b 1
 )
@@ -99,6 +126,10 @@ echo.
 echo  正在安装 / 升级 pywin32（wxauto 依赖）...
 echo.
 pip install --upgrade pywin32
+if errorlevel 1 (
+    echo  [警告] 默认 PyPI 源安装失败，正在切换到清华镜像源 ...
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pywin32
+)
 if errorlevel 1 (
     echo  [警告] pywin32 安装失败，但部分 wxauto 版本可以不依赖它继续运行。
     echo  建议先尝试运行 run_daily.bat；如果报错再回来处理。

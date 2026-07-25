@@ -23,6 +23,8 @@ C:\Users\<你的用户名>\AppData\Local\Microsoft\WindowsApps\Python311\python.
 
 **结论：商店版 Python 几乎无法让 wxauto 正常工作。必须改用官方版。**
 
+> ⚠ **注意区分**：Python 3.13+ 的官方安装包"仅当前用户"模式会安装到 `C:\Users\<用户>\AppData\Local\Python\pythoncore-3.13-64\`，路径里也含 `AppData\Local\Python`，但**没有 `WindowsApps` 关键字**，这是正规的官方版，不是商店版。判断唯一标准：路径里是否含 `WindowsApps`。
+
 ---
 
 ## 二、先做一次自我诊断
@@ -152,9 +154,55 @@ py -3.11 -m pip install --upgrade wxauto pywin32
 
 注意一定要带 `py -3.11 -m`，否则可能装到商店版的沙箱目录。
 
+如果上述命令报错 `Could not find a version that satisfies the requirement wxauto (from versions: none)`，说明默认 PyPI 源连不上（中国大陆常见），请先按下方第五节配置 pip 镜像源，再重试。
+
 ---
 
-## 六、常见问题
+## 五、配置 pip 镜像源（中国大陆必做）
+
+PyPI 官方源在国内访问不稳定，常见错误：
+
+```
+ERROR: Could not find a version that satisfies the requirement wxauto (from versions: none)
+ERROR: No matching distribution found for wxauto
+```
+
+**解决方案：换用清华源**。一次性命令：
+
+```bat
+py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto pywin32
+```
+
+**永久配置**（推荐，以后所有 pip 命令都自动走清华源）：
+
+```bat
+py -3.11 -m pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+py -3.11 -m pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
+```
+
+配置文件会写到 `C:\Users\<你的用户名>\AppData\Roaming\pip\pip.ini`，内容如下，可手动编辑：
+
+```ini
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple
+trusted-host = pypi.tuna.tsinghua.edu.cn
+```
+
+**其他可选国内镜像源**（任选其一即可）：
+
+| 名称 | URL |
+|---|---|
+| 清华 TUNA | `https://pypi.tuna.tsinghua.edu.cn/simple` |
+| 阿里云 | `https://mirrors.aliyun.com/pypi/simple` |
+| 中科大 | `https://pypi.mirrors.ustc.edu.cn/simple` |
+| 腾讯云 | `https://mirrors.cloud.tencent.com/pypi/simple` |
+| 豆瓣 | `https://pypi.douban.com/simple`（仅备用，更新慢） |
+
+> ⚠ 如果用了多版本 Python（如 3.11 和 3.14），**每个版本都要单独配置**，因为 pip 配置是按解释器实例存的。简单做法：`py -3.11 -m pip config set ...` 跑一遍，`py -3.14 -m pip config set ...` 再跑一遍。
+
+---
+
+## 七、常见问题
 
 ### Q1：装了官方版后，原本商店版 3.14 还能用吗？
 
