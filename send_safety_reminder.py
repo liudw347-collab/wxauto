@@ -2,15 +2,21 @@
 # -*- coding: utf-8 -*-
 """
 ==================================================================
-定州市第八中学 - 假期安全提醒每日自动发送脚本
+定州市第八中学 - 假期安全提醒每日自动发送脚本（v2 · 基于 wxauto4）
 ==================================================================
 功能：
     1. 每天定时向【班级家长群】发送当日安全提醒文案
-    2. 自动截图所发送的消息
+    2. 自动截图所发送的消息（截取微信窗口区域）
     3. 将截图转发至【班主任工作群】
 
-依赖：wxauto >= 2.x  （pip install wxauto）
-运行环境：Windows 10/11 + 微信 PC 版（已登录、窗口可见）
+依赖：wxauto4  （pip install wxauto4，免费版）
+     —— wxauto4 自动安装 pywin32、pillow、psutil 等依赖
+运行环境：
+    - Windows 10/11
+    - 微信 PC 版 4.1.x（推荐 4.1.8.107；4.1.9+ 需 Plus 版）
+    - Python 3.9 ~ 3.12（不支持 3.13/3.14）
+
+API 文档：https://docs.wxauto.org
 ==================================================================
 """
 
@@ -25,13 +31,13 @@ from datetime import datetime
 # ====================================================================
 
 # --- 群名设置 ---
-# 测试模式：True  → 仅发到"文件传输助手"，先验证脚本可用再切到正式
+# 测试模式：True  → 仅发到「文件传输助手」，先验证脚本可用再切到正式
 # 正式模式：False → 发到下方真实群名
 TEST_MODE = True
 
 PARENT_GROUP_NAME = "XX班家长群"      # 正式：班级家长群（接收安全提醒）
 WORK_GROUP_NAME   = "班主任工作群"     # 正式：班主任工作群（接收截图转发）
-TEST_TARGET       = "FileHelper"      # 测试模式下的目标（文件传输助手）
+TEST_TARGET       = "文件传输助手"      # 测试模式下的目标
 
 # --- 路径设置（默认放在 D 盘，可按需修改）---
 BASE_DIR          = r"D:\safety_reminder"
@@ -91,7 +97,7 @@ def build_reminder_text() -> str:
 
 
 # ====================================================================
-#                        主 流 程
+#                        工 具 函 数
 # ====================================================================
 
 def setup_logging():
@@ -116,12 +122,108 @@ def get_targets():
     return PARENT_GROUP_NAME, WORK_GROUP_NAME
 
 
+def screenshot_wechat_window(save_path: str) -> bool:
+    """
+    截取当前微信窗口区域并保存为 PNG。
+    使用 win32gui 获取微信主窗口句柄，再用 Pillow 抓图。
+    """
+    try:
+        import win32gui
+        import win32ui
+        import win32con
+        from ctypes import windll
+        from PIL import Image
+
+        # 找到微信主窗口（标题包含「微信」字样）
+        wechat_hwnd = None
+
+        def _enum_callback(hwnd, _):
+            nonlocal wechat_hwnd
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                cls = win32gui.GetClassName(hwnd)
+                if title and "微信" in title and cls == "WeChatMainWndForPC":
+                    wechat_hwnd = hwnd
+                    return False  # 找到了，停止枚举
+            return True
+
+        win32gui.EnumWindows(_enum_callback, None)
+
+        if not wechat_hwnd:
+            # 兼容旧版微信
+            wechat_hwnd = win32gui.FindWindow("WeChatMainWndForPC", None)
+
+        if not wechat_hwnd:
+            logging.error("未找到微信主窗口（类名 WeChatMainWndForPC）。请确认微信已登录且未最小化。")
+            return False
+
+        # 把微信窗口拉到前台并恢复
+        try:
+            win32gui.ShowWindow(wechat_hwnd, win32con.SW_RESTORE)
+            win32gui.SetForegroundWindow(wechat_hwnd)
+            time.sleep(0.5)
+        except Exception:
+            pass  # 非致命，继续尝试截图
+
+        # 获取窗口矩形
+        left, top, right, bottom = win32gui.GetWindowRect(wechat_hwnd)
+        width = right - left
+        height = bottom - top
+        if width <= 0 or height <= 0:
+            logging.error(f"微信窗口尺寸异常：{width}x{height}（窗口可能最小化）")
+            return False
+
+        # 截图：用 BitBlt 从屏幕 DC 拷贝到内存 DC
+        hwnd_dc = win32gui.GetWindowDC(wechat_hwnd)
+        mfc_dc = win32ui.CreateDCFromHandle(hwnd_dc)
+        save_dc = mfc_dc.CreateCompatibleDC()
+        bmp_obj = win32ui.CreateBitmap()
+        bmp_obj.CreateCompatibleBitmap(mfc_dc, width, height)
+        save_dc.SelectObject(bmp_obj)
+
+        # PrintWindow 比 BitBlt 更可靠（能截到 GPU 渲染的内容）
+        # PW_RENDERFULLCONTENT = 0x00000002 （Win 8.1+ 支持）
+        result = windll.user32.PrintWindow(wechat_hwnd, save_dc.GetSafeHdc(), 0x00000002)
+        if result != 1:
+            # 回退到 BitBlt
+            save_dc.BitBlt((0, 0), (width, height), mfc_dc, (0, 0), win32con.SRCCOPY)
+
+        bmp_obj.SaveBitmapFile(save_dc, save_path)
+
+        # 释放资源
+        save_dc.DeleteDC()
+        mfc_dc.DeleteDC()
+        win32gui.ReleaseDC(wechat_hwnd, hwnd_dc)
+        win32gui.DeleteObject(bmp_obj.GetHandle())
+
+        # 校验文件
+        if os.path.exists(save_path) and os.path.getsize(save_path) > 1000:
+            # 用 Pillow 验证可读
+            try:
+                with Image.open(save_path) as img:
+                    img.verify()
+                return True
+            except Exception:
+                pass
+
+        logging.error(f"截图文件异常：{save_path}")
+        return False
+
+    except Exception as e:
+        logging.error(f"截图失败：{e}")
+        return False
+
+
+# ====================================================================
+#                        主 流 程
+# ====================================================================
+
 def send_once() -> bool:
     """执行一次完整流程：发送 → 截图 → 转发。成功返回 True。"""
     try:
-        from wxauto import WeChat
+        from wxauto4 import WeChat
     except ImportError:
-        logging.error("未安装 wxauto，请先运行 install_deps.bat 或执行：pip install wxauto")
+        logging.error("未安装 wxauto4，请执行：pip install wxauto4")
         return False
 
     # 1) 连接微信
@@ -129,7 +231,10 @@ def send_once() -> bool:
         wx = WeChat()
         logging.info("✓ 微信已连接")
     except Exception as e:
-        logging.error(f"连接微信失败，请确认：① 微信 PC 版已登录；② 微信窗口未最小化；③ 未运行多个微信实例。错误：{e}")
+        logging.error(
+            f"连接微信失败，请确认：① 微信 PC 版 4.1.x 已登录；② 微信窗口未最小化；"
+            f"③ 未运行多个微信实例。错误：{e}"
+        )
         return False
 
     parent_target, work_target = get_targets()
@@ -139,7 +244,13 @@ def send_once() -> bool:
 
     # 2) 向家长群发送文案
     try:
-        wx.SendMsg(msg=reminder_text, who=parent_target)
+        # wxauto4 支持在 SendMsg 里直接传 who；显式 ChatWith 一次确保会话存在
+        wx.ChatWith(parent_target)
+        time.sleep(1)
+        result = wx.SendMsg(msg=reminder_text, who=parent_target)
+        # wxauto4 返回 WxResponse 对象，可用 bool() 判断
+        if result is not None and not bool(result):
+            raise RuntimeError(f"SendMsg 返回失败：{result}")
         logging.info(f"✓ 安全提醒已发送至【{parent_target}】")
     except Exception as e:
         logging.error(f"发送到【{parent_target}】失败：{e}")
@@ -147,26 +258,17 @@ def send_once() -> bool:
 
     # 3) 等待消息渲染后截图
     time.sleep(SEND_WAIT_SECONDS)
-    try:
-        # 不同 wxauto 版本截图 API 名略不同，做兼容处理
-        if hasattr(wx, "Screenshot"):
-            # 新版 API：Screenshot(full, savepath)
-            try:
-                wx.Screenshot(full=True, savepath=screenshot_path)
-            except TypeError:
-                wx.Screenshot(savedpath=screenshot_path)
-        elif hasattr(wx, "SaveCurrentChat"):
-            wx.SaveCurrentChat(screenshot_path)
-        else:
-            raise RuntimeError("wxauto 版本不支持截图方法，请升级：pip install -U wxauto")
-        logging.info(f"✓ 截图已保存：{screenshot_path}")
-    except Exception as e:
-        logging.error(f"截图失败：{e}")
+    if not screenshot_wechat_window(screenshot_path):
         return False
+    logging.info(f"✓ 截图已保存：{screenshot_path}")
 
     # 4) 将截图转发至工作群
     try:
-        wx.SendFiles(filepath=screenshot_path, who=work_target)
+        wx.ChatWith(work_target)
+        time.sleep(1)
+        result = wx.SendFiles(filepath=screenshot_path, who=work_target)
+        if result is not None and not bool(result):
+            raise RuntimeError(f"SendFiles 返回失败：{result}")
         logging.info(f"✓ 截图已转发至【{work_target}】")
     except Exception as e:
         logging.error(f"转发截图到【{work_target}】失败：{e}")

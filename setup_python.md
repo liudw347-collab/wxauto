@@ -1,6 +1,33 @@
 # Python 环境诊断与官方版安装指南
 
 > 本文档帮助您判断当前 Python 是否为微软商店版，并提供与商店版共存的官方版安装方案。
+>
+> **wxauto4 免费版要求 Python 3.9-3.12**（不支持 3.13/3.14）。如果您的 Python 是 3.13+，必须降级到 3.11 才能使用 wxauto4。Plus 版（wxautox4，付费）支持到 3.13。
+
+---
+
+## 零、为什么 wxauto 装不上？
+
+如果执行 `pip install wxauto` 报：
+
+```
+ERROR: Could not find a version that satisfies the requirement wxauto (from versions: none)
+ERROR: No matching distribution found for wxauto
+```
+
+**根因**：包名错了！官方 PyPI 上的包名是 **`wxauto4`**（带 4），不是 `wxauto`。请改用：
+
+```bat
+pip install wxauto4
+```
+
+或带清华源：
+
+```bat
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto4
+```
+
+如果 `pip install wxauto4` 也报 "No matching distribution"，请按下列步骤检查 Python 版本（必须 3.9-3.12）和网络（PyPI 镜像源）。
 
 ---
 
@@ -149,12 +176,19 @@ set "PYTHON_EXE=C:\Python311\python.exe"
 仓库 `install_deps.bat` 已经会自动诊断。如果它检测出当前 python 是商店版，请手动执行以下命令安装依赖：
 
 ```bat
-py -3.11 -m pip install --upgrade wxauto pywin32
+py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto4
 ```
 
 注意一定要带 `py -3.11 -m`，否则可能装到商店版的沙箱目录。
 
-如果上述命令报错 `Could not find a version that satisfies the requirement wxauto (from versions: none)`，说明默认 PyPI 源连不上（中国大陆常见），请先按下方第五节配置 pip 镜像源，再重试。
+> **关键**：包名是 `wxauto4`（带 4），不是 `wxauto`！wxauto4 会自动安装 pywin32、pillow、psutil 等依赖，无需单独安装。
+
+如果上述命令报错 `Could not find a version that satisfies the requirement wxauto4 (from versions: none)`，可能原因：
+
+1. **Python 版本不在 3.9-3.12 范围内**（wxauto4 免费版的硬性限制）。请用 `py -3.11 -m pip install ...` 强制走 3.11 解释器。
+2. **PyPI 默认源连不上**（中国大陆常见）。请加上 `-i https://pypi.tuna.tsinghua.edu.cn/simple` 参数走清华镜像源。
+
+两个问题独立，建议同时解决。详见下方第五节配置 pip 镜像源。
 
 ---
 

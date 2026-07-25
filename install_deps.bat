@@ -83,8 +83,8 @@ if "!PY_VER_CHECK!"=="TOO_NEW" (
     echo  [提示] 当前默认 Python 是 3.14+，wxauto 与 pywin32 对 3.14 的适配尚不稳定。
     echo  建议改用 Python 3.11 安装依赖与运行脚本。
     echo.
-    echo  如果您已经安装了官方版 3.11，请用以下命令安装依赖：
-    echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto pywin32
+    echo  wxauto4 需要 Python 3.9-3.12，当前默认版本过高，必须改用 3.11 安装：
+    echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto4
     echo.
     echo  并编辑 run_daily.bat 顶部：set "PYTHON_EXE=py -3.11"
     echo.
@@ -96,51 +96,41 @@ if "!PY_VER_CHECK!"=="TOO_NEW" (
     echo  [信息] 已选择继续，使用当前默认 Python 安装依赖。
 )
 
-REM --- 4. 版本号检查（3.8 ~ 3.13 允许；3.12+ 给提示但不阻塞） ---
-python -c "import sys;exit(0 if sys.version_info[:2] >= (3,8) else 1)"
+REM --- 4. 版本号检查（wxauto4 仅支持 3.9-3.12） ---
+python -c "import sys;ver=sys.version_info[:2];exit(0 if (3,9)<=ver<=(3,12) else 1)"
 if errorlevel 1 (
-    echo  [错误] Python 版本过低，请升级到 3.8 以上。
+    echo  [错误] wxauto4 仅支持 Python 3.9-3.12。当前默认 Python 版本不符合。
+    echo  请使用 py -3.11 安装依赖并运行：
+    echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto4
+    echo  并编辑 run_daily.bat 顶部：set "PYTHON_EXE=py -3.11"
     pause
     exit /b 1
 )
 
-echo  [信息] Python 版本符合要求。
+echo  [信息] Python 版本符合 wxauto4 要求（3.9-3.12）。
 
-REM --- 5. 安装依赖 ---
+REM --- 5. 安装依赖（注意：包名是 wxauto4，不是 wxauto）---
+REM     wxauto4 会自动安装 pywin32、pillow、psutil、tenacity 等依赖
+REM     所以只需 pip install wxauto4 即可
 echo.
-echo  正在安装 / 升级 wxauto ...
+echo  正在安装 / 升级 wxauto4 ...
 echo.
-pip install --upgrade wxauto
+pip install --upgrade wxauto4
 if errorlevel 1 (
     echo  [警告] 默认 PyPI 源安装失败，正在切换到清华镜像源 ...
-    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto4
 )
 if errorlevel 1 (
-    echo  [错误] wxauto 安装失败，请手动执行：
-    echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto
+    echo  [错误] wxauto4 安装失败，请手动执行：
+    echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto4
+    echo  注意包名是 wxauto4（带 4），不是 wxauto！
     pause
     exit /b 1
-)
-
-echo.
-echo  正在安装 / 升级 pywin32（wxauto 依赖）...
-echo.
-pip install --upgrade pywin32
-if errorlevel 1 (
-    echo  [警告] 默认 PyPI 源安装失败，正在切换到清华镜像源 ...
-    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pywin32
-)
-if errorlevel 1 (
-    echo  [警告] pywin32 安装失败，但部分 wxauto 版本可以不依赖它继续运行。
-    echo  建议先尝试运行 run_daily.bat；如果报错再回来处理。
-) else (
-    REM 运行 pywin32 post-install
-    python -c "import pywin32_postinstall;pywin32_postinstall.install()" 2>nul
 )
 
 echo.
 echo  ============================================================
-echo   ✓ 依赖安装完成！
+echo   ✓ wxauto4 依赖安装完成！
 echo  ============================================================
 echo.
 echo  下一步：

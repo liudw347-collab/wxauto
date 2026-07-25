@@ -9,11 +9,17 @@
 | 项 | 要求 |
 |---|---|
 | 操作系统 | Windows 10 / 11（64 位） |
-| 微信版本 | 微信 PC 版 3.7+ （**必须是 PC 版，不能是微软商店版**） |
-| Python | **官方版 3.11**（3.8 ~ 3.13 可用；3.14 太新不推荐；**微软商店版不可用**，详见 [setup_python.md](setup_python.md)） |
+| Python | **官方版 3.11**（wxauto4 免费版要求 3.9-3.12；**3.13/3.14 不支持**；微软商店版不可用，详见 [setup_python.md](setup_python.md)） |
+| wxauto 库 | **wxauto4**（注意包名带 4，不是 `wxauto`） |
+| 微信版本 | 微信 PC 版 4.1.x（推荐 4.1.8.107；4.1.9+ 需 Plus 版）|
 | 网络 | 微信能正常登录收发消息 |
 
-> **如果您电脑上是微软商店版 Python 或 3.14**：请先按 [setup_python.md](setup_python.md) 安装官方版 Python 3.11，与商店版共存、无需卸载。
+> **重要变更**：
+> - **包名变了**：官方 PyPI 上的包名是 `wxauto4`（不是 `wxauto`）。直接 `pip install wxauto` 会报 "No matching distribution found"。
+> - **微信版本要求变了**：需要微信 PC 版 4.1.x（**3.x 版本不支持**）。可从官方文档提供的 [GitHub Releases 归档](https://github.com/SiverKing/wechat4.0-windows-versions/releases) 下载历史版本。
+> - **Python 3.13/3.14 不支持**，必须用 3.9-3.12。推荐 3.11。
+
+> **如果您电脑上是微软商店版 Python 或 3.13/3.14**：请先按 [setup_python.md](setup_python.md) 安装官方版 Python 3.11。
 
 ---
 
@@ -46,21 +52,26 @@ wechat-safety-reminder/
 
 ### 第 3 步：安装依赖
 
-双击运行 **`install_deps.bat`**，脚本会自动诊断 Python 来源并安装 `wxauto` 与 `pywin32`。
+双击运行 **`install_deps.bat`**，脚本会自动诊断 Python 来源并安装 `wxauto4`（注意是 wxauto4，不是 wxauto）。
 
-如果检测出商店版，按提示装好官方版后，手动执行以下命令安装依赖（注意带 `py -3.11 -m`）：
+如果检测出商店版或 3.13/3.14，按提示装好官方版 3.11 后，手动执行以下命令安装依赖（注意带 `py -3.11 -m`）：
 
 ```bat
-py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto pywin32
+py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto4
 ```
 
 > 💡 `-i https://pypi.tuna.tsinghua.edu.cn/simple` 是清华镜像源，国内访问速度更快、避免连接 PyPI 失败。如需永久配置，详见 [setup_python.md 第五节](setup_python.md)。
+>
+> ⚠ **包名是 `wxauto4`，不是 `wxauto`**。wxauto4 会自动安装 pywin32、pillow、psutil 等依赖，无需单独安装。
 
 ### 第 4 步：登录微信
 
-1. 打开 PC 版微信并扫码登录。
+1. 打开 PC 版微信（**需 4.1.x 版本，3.x 不支持**）并扫码登录。
 2. **保持微信窗口可见**（不能最小化到任务栏；可以缩到角落）。
 3. 确保在最近聊天列表里能看到目标群（**先用手机微信进入一次群聊**，PC 端就会自动出现）。
+
+> 如需安装 4.1.8.107 历史版本：https://github.com/SiverKing/wechat4.0-windows-versions/releases/tag/v4.1.8.107
+> （先卸载当前微信，再装这个版本；安装后建议关闭自动更新避免被升级到 4.1.9+）
 
 ### 第 5 步：先跑一次测试模式
 
@@ -134,22 +145,25 @@ WORK_GROUP_NAME   = "定州八中班主任工作群"        # 你的实际工作
 
 ## 六、常见问题排查
 
-### Q1：脚本提示「连接微信失败」
+### Q1：脚本提示"连接微信失败"
 
 - 微信窗口是否被最小化？→ 还原窗口。
 - 是否运行了多个微信实例？→ 只保留一个。
 - 微信是否登录了？→ 重新扫码登录。
-- 是否在远程桌面 / 锁屏状态？wxauto 依赖 UI 元素，**建议电脑保持用户登录且非锁屏状态**。Windows 任务计划程序属性里取消「不管用户是否登录都要运行」。
+- 微信版本是否为 4.1.x？wxauto4 不支持 3.x 微信。下载 4.1.8.107：https://github.com/SiverKing/wechat4.0-windows-versions/releases/tag/v4.1.8.107
+- 是否在远程桌面 / 锁屏状态？wxauto4 依赖 UI 元素，**建议电脑保持用户登录且非锁屏状态**。Windows 任务计划程序属性里取消「不管用户是否登录都要运行」。
 
 ### Q2：发送时提示找不到群
 
 - 群名是否一字不差？包含空格、emoji、特殊字符都要对齐。
 - 该群是否在微信的「最近聊天」列表中？**用手机微信进入该群一次**，PC 端会自动同步。
+- wxauto4 默认 `exact=False`（模糊匹配），如果同名群较多，可在脚本中改为精确匹配。
 
 ### Q3：截图为空或截图区域不对
 
-- 升级 wxauto：`pip install -U wxauto`
-- 部分老版 wxauto 没有 `Screenshot` 方法，需升级到 **2.x 以上**。
+- wxauto4 免费版没有内置 Screenshot 方法，本脚本使用 `pywin32` 的 PrintWindow API 直接截取微信窗口（类名 `WeChatMainWndForPC`）。
+- 如果截图全黑：可能微信窗口被遮挡或处于最小化状态。脚本会自动尝试还原窗口，但仍建议手动保持微信窗口可见。
+- 截图全黑且窗口可见：可能是 GPU 渲染兼容性问题，可改用 `pyautogui.screenshot()` 全屏截图方案（替换 `screenshot_wechat_window` 函数实现）。
 
 ### Q4：发到工作群的截图打不开 / 体积为 0
 
@@ -165,10 +179,11 @@ WORK_GROUP_NAME   = "定州八中班主任工作群"        # 你的实际工作
 
 ## 七、安全与合规提示
 
-1. wxauto 通过模拟用户操作控制微信 PC 版，**不修改微信本体、不读取聊天记录**，安全性较好。但仍属第三方工具，存在极小概率被微信风控的可能性。
+1. wxauto4 通过模拟用户操作控制微信 PC 版 4.1.x，**不修改微信本体、不读取聊天记录**，安全性较好。但仍属第三方工具，存在极小概率被微信风控的可能性。
 2. **建议每天只发送一次**，不要频繁触发，避免被识别为营销机器人。
 3. 若长期使用过程中收到微信安全提示，建议暂停几天后再次启用，或改用「企业微信群机器人」官方接口（无任何封号风险，需要学校开通企业微信）。
 4. 文案中的日期由脚本 `datetime.now()` 自动取当天日期，**无需人工修改**，跨年也能继续使用。
+5. wxauto4 免费版要求微信 4.1.8.107；如果被微信自动升级到 4.1.9+，需要购买 Plus 版 (`pip install wxautox4`)，或手动安装 [4.1.8.107 历史版本](https://github.com/SiverKing/wechat4.0-windows-versions/releases/tag/v4.1.8.107)。
 
 ---
 
