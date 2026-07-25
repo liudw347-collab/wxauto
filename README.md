@@ -10,8 +10,10 @@
 |---|---|
 | 操作系统 | Windows 10 / 11（64 位） |
 | 微信版本 | 微信 PC 版 3.7+ （**必须是 PC 版，不能是微软商店版**） |
-| Python | 3.8 ~ 3.11（3.12+ 暂不建议，wxauto 部分依赖未完全适配） |
+| Python | **官方版 3.11**（3.8 ~ 3.13 可用；3.14 太新不推荐；**微软商店版不可用**，详见 [setup_python.md](setup_python.md)） |
 | 网络 | 微信能正常登录收发消息 |
+
+> **如果您电脑上是微软商店版 Python 或 3.14**：请先按 [setup_python.md](setup_python.md) 安装官方版 Python 3.11，与商店版共存、无需卸载。
 
 ---
 
@@ -20,8 +22,9 @@
 ```
 wechat-safety-reminder/
 ├── send_safety_reminder.py   ← 核心脚本（含文案、发送、截图、转发、重试、日志）
-├── install_deps.bat         ← 依赖安装脚本（双击运行一次即可）
-├── run_daily.bat             ← 启动器（双击测试 / 任务计划程序调用）
+├── install_deps.bat         ← 依赖安装脚本（双击运行一次即可，自动诊断 Python 来源）
+├── run_daily.bat             ← 启动器（双击测试 / 任务计划程序调用，顶部可配置 Python 路径）
+├── setup_python.md           ← Python 环境诊断与官方版安装指南（必读）
 └── README.md                 ← 本说明文件
 ```
 
@@ -33,17 +36,31 @@ wechat-safety-reminder/
 
 建议放在 **`D:\safety_reminder\`**（脚本默认路径）。如果换成其他盘，需要同时修改 `send_safety_reminder.py` 顶部的 `BASE_DIR`。
 
-### 第 2 步：安装依赖
+### 第 2 步：检查 Python 环境
 
-双击运行 **`install_deps.bat`**，等待 `pip` 安装完成 `wxauto` 与 `pywin32`。
+**强烈建议先按 [setup_python.md](setup_python.md) 诊断 Python 环境。**
 
-### 第 3 步：登录微信
+简而言之：
+- 如果是微软商店版 Python 或 Python 3.14 → 必须额外装官方版 Python 3.11
+- 如果已经是官方版 Python 3.11 → 可直接继续
+
+### 第 3 步：安装依赖
+
+双击运行 **`install_deps.bat`**，脚本会自动诊断 Python 来源并安装 `wxauto` 与 `pywin32`。
+
+如果检测出商店版，按提示装好官方版后，手动执行以下命令安装依赖（注意带 `py -3.11 -m`）：
+
+```bat
+py -3.11 -m pip install --upgrade wxauto pywin32
+```
+
+### 第 4 步：登录微信
 
 1. 打开 PC 版微信并扫码登录。
 2. **保持微信窗口可见**（不能最小化到任务栏；可以缩到角落）。
 3. 确保在最近聊天列表里能看到目标群（**先用手机微信进入一次群聊**，PC 端就会自动出现）。
 
-### 第 4 步：先跑一次测试模式
+### 第 5 步：先跑一次测试模式
 
 打开 `send_safety_reminder.py`，确认顶部配置区：
 
@@ -65,7 +82,7 @@ WORK_GROUP_NAME   = "定州八中班主任工作群"        # 你的实际工作
 
 > ⚠ **群名必须一字不差**，包括空格、标点、emoji。最稳妥的方式：从微信里复制群名。
 
-### 第 5 步：再次手动跑一次正式模式
+### 第 6 步：再次手动跑一次正式模式
 
 确认文案能正确发到家长群、截图能转发到工作群。
 
