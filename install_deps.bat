@@ -2,43 +2,43 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 REM ============================================================
-REM  定州市第八中学 - 安全提醒脚本依赖安装与 Python 环境诊断
-REM  双击运行即可
+REM  Dingzhou No.8 Middle School - Dependency installer + Python env diagnostics
+REM  Double-click to run.
 REM ============================================================
 
 echo.
 echo  ============================================================
-echo   定州市第八中学 - 环境诊断开始
+echo   Dingzhou No.8 MS - Environment diagnostics starting
 echo  ============================================================
 echo.
 
-REM --- 1. 检测 Python 是否存在 ---
+REM --- 1. Check if python exists ---
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo  [错误] 未检测到 python 命令。
+    echo  [ERROR] python command not found.
     echo.
-    echo  请先按 setup_python.md 安装官方版 Python 3.11。
-    echo  下载地址：https://www.python.org/downloads/release/python-3119/
-    echo  安装时务必勾选 "Add Python to PATH"
+    echo  Please install official Python 3.11 first (see setup_python.md).
+    echo  Download: https://www.python.org/downloads/release/python-3119/
+    echo  Remember to check "Add Python to PATH" during installation.
     echo.
     pause
     exit /b 1
 )
 
-REM --- 2. 读取 Python 路径与版本 ---
+REM --- 2. Read python path and version ---
 for /f "delims=" %%P in ('where python') do (
     set PYTHON_FIRST=%%P
     goto :found_python
 )
 :found_python
-echo  [信息] python 命令路径：!PYTHON_FIRST!
+echo  [INFO] python command path: !PYTHON_FIRST!
 
 for /f "tokens=*" %%V in ('python -c "import sys;print(sys.version)"') do (
     set PYTHON_VERSION=%%V
 )
-echo  [信息] Python 版本：!PYTHON_VERSION!
+echo  [INFO] Python version: !PYTHON_VERSION!
 
-REM --- 3. 检测是否微软商店版（路径含 WindowsApps） ---
+REM --- 3. Detect Microsoft Store edition (path contains WindowsApps) ---
 set IS_STORE=0
 echo !PYTHON_FIRST! | findstr /I "WindowsApps" >nul && set IS_STORE=1
 python -c "import sys;print('STORE' if 'WindowsApps' in sys.executable else 'OFFICIAL')" >"%TEMP%\py_kind.txt" 2>nul
@@ -47,95 +47,93 @@ del "%TEMP%\py_kind.txt" 2>nul
 
 if "!PY_KIND!"=="STORE" (
     echo.
-    echo  [警告] ^|^|^| 检测到当前 python 是【微软商店版】 ^|^|^|
+    echo  [WARN] ^|^|^| Detected Microsoft Store Python ^|^|^|
     echo  ----------------------------------------------------------
-    echo  商店版 Python 有以下已知问题，会导致 wxauto 无法正常工作：
-    echo    1. 路径重定向：pip 安装的包被装到沙箱目录，其他程序读不到
-    echo    2. COM 权限受限：wxauto 依赖的 pywin32 经常初始化失败
-    echo    3. 任务计划程序调用商店版 python 会因沙箱机制失败
+    echo  Store Python has known issues that break wxauto4:
+    echo    1. Path redirection: pip-installed packages go to sandbox dir
+    echo    2. COM permission restricted: pywin32 init fails
+    echo    3. Task Scheduler cannot call Store python reliably
     echo  ----------------------------------------------------------
     echo.
-    echo  推荐方案：保留商店版不动，另外安装官方版 Python 3.11。
-    echo  详见仓库内 setup_python.md 文档。
+    echo  Solution: keep Store python, install official Python 3.11 alongside.
+    echo  See setup_python.md for details.
     echo.
-    echo  安装完官方版后，请用以下命令验证（注意是 py launcher，不是 python）：
+    echo  After installing official 3.11, verify:
     echo      py -3.11 --version
     echo.
-    echo  然后编辑 run_daily.bat 顶部的 PYTHON_EXE 配置，指向官方版，
-    echo  例如：set PYTHON_EXE=py -3.11
-    echo       或：set PYTHON_EXE=C:\Python311\python.exe
+    echo  Then edit run_daily.bat top config:
+    echo      set "PYTHON_EXE=py -3.11"
+    echo      or: set "PYTHON_EXE=C:\Python311\python.exe"
     echo.
     pause
     exit /b 1
 )
 
 if !IS_STORE!==1 (
-    echo  [警告] 路径含 WindowsApps，疑似商店版，已在上文处理。
+    echo  [WARN] Path contains WindowsApps, treated as Store edition above.
 )
 
-REM --- 3.1 检查当前默认 Python 版本是否为 3.14（太新，wxauto 兼容性差）---
-python -c "import sys;print('TOO_NEW' if sys.version_info[:2] >= (3,14) else 'OK')" >"%TEMP%\py_ver.txt" 2>nul
+REM --- 3.1 Check if default python is too new (3.13+) ---
+python -c "import sys;print('TOO_NEW' if sys.version_info[:2] >= (3,13) else 'OK')" >"%TEMP%\py_ver.txt" 2>nul
 set /p PY_VER_CHECK=<%TEMP%\py_ver.txt
 del "%TEMP%\py_ver.txt" 2>nul
 
 if "!PY_VER_CHECK!"=="TOO_NEW" (
     echo.
-    echo  [提示] 当前默认 Python 是 3.14+，wxauto 与 pywin32 对 3.14 的适配尚不稳定。
-    echo  建议改用 Python 3.11 安装依赖与运行脚本。
-    echo.
-    echo  wxauto4 需要 Python 3.9-3.12，当前默认版本过高，必须改用 3.11 安装：
+    echo  [INFO] Current default Python is 3.13+.
+    echo  wxauto4 free version requires Python 3.9-3.12 only.
+    echo  Use py -3.11 to install and run:
     echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto4
     echo.
-    echo  并编辑 run_daily.bat 顶部：set "PYTHON_EXE=py -3.11"
+    echo  Edit run_daily.bat top: set "PYTHON_EXE=py -3.11"
     echo.
-    choice /C YN /M "是否继续用当前 Python 安装依赖（Y=继续 / N=退出）"
+    choice /C YN /M "Continue with current python anyway (Y=continue / N=exit)"
     if errorlevel 2 (
         pause
         exit /b 1
     )
-    echo  [信息] 已选择继续，使用当前默认 Python 安装依赖。
+    echo  [INFO] Continuing with current default python.
 )
 
-REM --- 4. 版本号检查（wxauto4 仅支持 3.9-3.12） ---
+REM --- 4. Version check (wxauto4 requires 3.9-3.12) ---
 python -c "import sys;ver=sys.version_info[:2];exit(0 if (3,9)<=ver<=(3,12) else 1)"
 if errorlevel 1 (
-    echo  [错误] wxauto4 仅支持 Python 3.9-3.12。当前默认 Python 版本不符合。
-    echo  请使用 py -3.11 安装依赖并运行：
+    echo  [ERROR] wxauto4 requires Python 3.9-3.12. Current default python does not match.
+    echo  Use py -3.11 to install and run:
     echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto4
-    echo  并编辑 run_daily.bat 顶部：set "PYTHON_EXE=py -3.11"
+    echo  Edit run_daily.bat top: set "PYTHON_EXE=py -3.11"
     pause
     exit /b 1
 )
 
-echo  [信息] Python 版本符合 wxauto4 要求（3.9-3.12）。
+echo  [INFO] Python version meets wxauto4 requirement (3.9-3.12).
 
-REM --- 5. 安装依赖（注意：包名是 wxauto4，不是 wxauto）---
-REM     wxauto4 会自动安装 pywin32、pillow、psutil、tenacity 等依赖
-REM     所以只需 pip install wxauto4 即可
+REM --- 5. Install dependencies (package name is wxauto4, NOT wxauto) ---
+REM     wxauto4 auto-installs pywin32, pillow, psutil, tenacity, etc.
 echo.
-echo  正在安装 / 升级 wxauto4 ...
+echo  Installing / upgrading wxauto4 ...
 echo.
 pip install --upgrade wxauto4
 if errorlevel 1 (
-    echo  [警告] 默认 PyPI 源安装失败，正在切换到清华镜像源 ...
+    echo  [WARN] Default PyPI failed, switching to Tsinghua mirror ...
     pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade wxauto4
 )
 if errorlevel 1 (
-    echo  [错误] wxauto4 安装失败，请手动执行：
+    echo  [ERROR] wxauto4 install failed. Run manually:
     echo      py -3.11 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wxauto4
-    echo  注意包名是 wxauto4（带 4），不是 wxauto！
+    echo  NOTE: package name is wxauto4 (with 4), not wxauto!
     pause
     exit /b 1
 )
 
 echo.
 echo  ============================================================
-echo   ✓ wxauto4 依赖安装完成！
+echo   wxauto4 dependencies installed successfully!
 echo  ============================================================
 echo.
-echo  下一步：
-echo    1. 编辑 send_safety_reminder.py 顶部的群名配置
-echo    2. 保持 TEST_MODE = True，双击 run_daily.bat 测试一次
+echo  Next steps:
+echo    1. Edit group names in send_safety_reminder.py top config
+echo    2. Keep TEST_MODE = True, double-click run_daily.bat to test
 echo.
 pause
 endlocal
